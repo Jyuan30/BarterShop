@@ -1,0 +1,18 @@
+name: BarterShop
+main: org.xymy.barterShop.BarterShop
+version: 1.3.0
+api-version: '1.16'
+commands:
+  bartershop:
+    description: 查看分组并浏览对应商店
+    usage: /bartershop
+permissions:
+  bartershop.admin.break:
+    description: 允许破坏他人商店（牌子与关联箱子）
+    default: op
+  bartershop.admin.create:
+    description: 允许创建管理员商店 [adminshop]
+    default: op
+  bartershop.admin.clear:
+    description: 清理商店
+    default: op
