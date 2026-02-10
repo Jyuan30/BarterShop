@@ -18,6 +18,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.xymy.barterShop.BarterShop;
 import org.xymy.barterShop.Shop;
 import org.xymy.barterShop.ShopManager;
@@ -35,6 +36,9 @@ public class ShopUseListener implements Listener {
     private final Map<UUID, Shop> waitingForInput = new HashMap();
     private static final Map<UUID, ShopGui> openShops = new HashMap();
     public static ShopManager shopManagerGlobal;
+
+    private static final int TRADE_TIMEOUT_SECONDS = 10; /* 交易超时时间(s) */
+    private static final double MAX_TRADE_DISTANCE = 6.0; /* 最大交易距离 */
 
     public ShopUseListener(BarterShop plugin) {
         this.logger = plugin.getLogger();
@@ -96,6 +100,37 @@ public class ShopUseListener implements Listener {
 
                     ShopUtils.send(p, String.valueOf(ChatColor.YELLOW) + "请输入交易次数(输入cancel取消)：");
                     this.waitingForInput.put(p.getUniqueId(), shop);
+
+                    new BukkitRunnable() {
+                        private int countdown = TRADE_TIMEOUT_SECONDS;
+                        private final UUID playerId = p.getUniqueId();
+                        @Override
+                        public void run() {
+                            /* 交易已取消 */
+                            if (!waitingForInput.containsKey(playerId)) {
+                                this.cancel();
+                                return;
+                            }
+                            /* 超时 */
+                            if (countdown <= 0) {
+                                ShopUtils.send(p,String.valueOf(ChatColor.RED) + "交易超时！");
+                                waitingForInput.remove(playerId);
+                                this.cancel();
+                                return;
+                            }
+                            /* 距离检测 */
+                            Location sPos = waitingForInput.get(playerId).getSignLocation();
+                            Location pPos = p.getLocation();
+                            if (!sPos.getWorld().equals(pPos.getWorld()) || sPos.distance(pPos) > MAX_TRADE_DISTANCE) {
+                                ShopUtils.send(p,String.valueOf(ChatColor.RED) + "你距离商店太远，交易已取消！");
+                                waitingForInput.remove(playerId);
+                                this.cancel();
+                                return;
+                            }
+                            countdown--;
+                        }
+                    }.runTaskTimer(plugin, 0L, 20L); /*runTaskTimer不阻塞主线程*/
+
                 }
             }
 
